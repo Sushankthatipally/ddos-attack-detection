@@ -50,3 +50,5 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+Clustering Pipeline for-2026-02-17-095852.png
+.gitignore

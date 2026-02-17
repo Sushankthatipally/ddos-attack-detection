@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
+from matplotlib import colors as mcolors
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import os
@@ -101,7 +104,37 @@ if df is not None:
         st.subheader("2. Cluster Centroids")
         if num_clusters > 0:
             centroids_df = pd.DataFrame(model.centroids_, columns=FEATURE_NAMES)
-            st.dataframe(centroids_df.style.background_gradient(cmap="viridis", axis=1))
+            centroids_df.index = [f"Cluster {i}" for i in range(num_clusters)]
+
+            st.caption("Index: each row is a centroid (`Cluster 0`, `Cluster 1`, ...).")
+            st.dataframe(centroids_df)
+
+            # Heatmap with explicit colorbar so color meaning is clear
+            fig_centroid, ax_centroid = plt.subplots(
+                figsize=(max(8, len(FEATURE_NAMES) * 0.9), max(2.8, num_clusters * 0.6))
+            )
+            im = ax_centroid.imshow(centroids_df.values, cmap="viridis", aspect="auto")
+            ax_centroid.set_title("Centroid Values Heatmap")
+            ax_centroid.set_xticks(np.arange(len(FEATURE_NAMES)))
+            ax_centroid.set_xticklabels(FEATURE_NAMES, rotation=45, ha="right")
+            ax_centroid.set_yticks(np.arange(num_clusters))
+            ax_centroid.set_yticklabels(centroids_df.index.tolist())
+            cbar = fig_centroid.colorbar(im, ax=ax_centroid)
+            cbar.set_label("Standardized Feature Value (z-score)")
+            st.pyplot(fig_centroid)
+
+            st.caption(
+                "Color index for centroids: purple/blue = lower value, green = medium, "
+                "yellow = higher value (based on z-score)."
+            )
+
+            cluster_sizes_df = pd.DataFrame(
+                {
+                    "Cluster ID": [f"Cluster {i}" for i in range(num_clusters)],
+                    "Samples Assigned": model.cluster_counts_,
+                }
+            )
+            st.dataframe(cluster_sizes_df, hide_index=True)
         else:
             st.warning("No clusters formed.")
 
@@ -113,14 +146,34 @@ if df is not None:
             all_dists = model.transform(X_scaled)
             min_distances = np.min(all_dists, axis=1)
             
+            hist_color = "skyblue"
             fig_hist, ax_hist = plt.subplots()
-            ax_hist.hist(min_distances, bins=20, color='skyblue', edgecolor='black')
-            ax_hist.axvline(model.anomaly_threshold_, color='red', linestyle='dashed', linewidth=2, label='Anomaly Threshold')
+            ax_hist.hist(min_distances, bins=20, color=hist_color, edgecolor='black')
+            ax_hist.axvline(
+                model.anomaly_threshold_,
+                color='red',
+                linestyle='dashed',
+                linewidth=2
+            )
             ax_hist.set_title("Distance to Nearest Cluster")
             ax_hist.set_xlabel("Distance")
             ax_hist.set_ylabel("Frequency")
-            ax_hist.legend()
+            legend_handles = [
+                Patch(facecolor=hist_color, edgecolor="black", label="Samples per distance bin"),
+                Line2D(
+                    [0], [0],
+                    color="red",
+                    linestyle="dashed",
+                    linewidth=2,
+                    label=f"Anomaly Threshold = {model.anomaly_threshold_:.4f}"
+                ),
+            ]
+            ax_hist.legend(handles=legend_handles)
             st.pyplot(fig_hist)
+            st.caption(
+                "Index: blue bars show number of samples in each distance range; "
+                "red dashed line is the anomaly cutoff used for prediction."
+            )
         else:
             st.warning("No clusters formed.")
 
@@ -134,9 +187,18 @@ if df is not None:
         pca = PCA(n_components=2)
         X_pca = pca.fit_transform(X_scaled)
         
-        # Plot
+        # Plot with explicit cluster color index
+        cluster_cmap = plt.get_cmap("tab10", num_clusters)
         fig_pca, ax_pca = plt.subplots(figsize=(10, 6))
-        scatter = ax_pca.scatter(X_pca[:, 0], X_pca[:, 1], c=cluster_labels, cmap='tab10', alpha=0.7)
+        scatter = ax_pca.scatter(
+            X_pca[:, 0],
+            X_pca[:, 1],
+            c=cluster_labels,
+            cmap=cluster_cmap,
+            vmin=-0.5,
+            vmax=num_clusters - 0.5,
+            alpha=0.7
+        )
         
         # Plot Centroids on PCA (Need to transform them too)
         centroids_pca = pca.transform(np.array(model.centroids_))
@@ -146,8 +208,20 @@ if df is not None:
         ax_pca.set_xlabel("Principal Component 1")
         ax_pca.set_ylabel("Principal Component 2")
         ax_pca.legend()
-        plt.colorbar(scatter, ax=ax_pca, label="Cluster ID")
+        cbar = plt.colorbar(scatter, ax=ax_pca, ticks=np.arange(num_clusters), label="Cluster ID")
+        cbar.ax.set_yticklabels([f"Cluster {i}" for i in range(num_clusters)])
         st.pyplot(fig_pca)
+
+        cluster_counts = np.bincount(cluster_labels, minlength=num_clusters)
+        cluster_color_index_df = pd.DataFrame(
+            {
+                "Cluster ID": [f"Cluster {i}" for i in range(num_clusters)],
+                "Color (hex)": [mcolors.to_hex(cluster_cmap(i)) for i in range(num_clusters)],
+                "Points in PCA Plot": cluster_counts
+            }
+        )
+        st.caption("Cluster color index for PCA plot:")
+        st.dataframe(cluster_color_index_df, hide_index=True)
 
     # --- Inference Section ---
     st.divider()

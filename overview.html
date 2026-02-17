@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Federated DDoS IDS</title>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --card: #ffffff;
+      --ink: #111827;
+      --muted: #4b5563;
+      --line: #d1d5db;
+      --accent: #0f766e;
+      --accent-soft: #ecfeff;
+    }
+
+    @page {
+      size: A4;
+      margin: 12mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      line-height: 1.35;
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px 18px 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.15;
+      letter-spacing: 0.2px;
+    }
+
+    .subtitle {
+      margin: 8px 0 14px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      margin: 0 0 14px;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .legend {
+      border: 1px solid var(--line);
+      background: var(--card);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      font-size: 14px;
+    }
+
+    .legend b {
+      color: var(--accent);
+    }
+
+    .group {
+      margin-bottom: 14px;
+    }
+
+    .group h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: var(--accent-soft);
+      border: 1px solid #c2f3f6;
+      color: #115e59;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 11px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .eq {
+      border: 1px solid #dbeafe;
+      background: #eff6ff;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 18px;
+      line-height: 1.4;
+      text-align: center;
+      color: #1e3a8a;
+      margin: 0 0 8px;
+      overflow-x: auto;
+    }
+
+    .eq mjx-container {
+      margin: 0 !important;
+    }
+
+    .vars {
+      margin: 0 0 8px 18px;
+      padding: 0;
+      font-size: 13px;
+    }
+
+    .vars li {
+      margin-bottom: 4px;
+    }
+
+    .meta {
+      margin: 0;
+      font-size: 13px;
+    }
+
+    .meta b {
+      color: #1f2937;
+    }
+
+    .foot {
+      margin-top: 10px;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      h1 {
+        font-size: 24px;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+      .wrap {
+        max-width: none;
+        padding: 0;
+      }
+      .toolbar {
+        display: none;
+      }
+      .group h2 {
+        background: #f3f4f6;
+        border-color: #e5e7eb;
+        color: #111827;
+      }
+      .eq {
+        background: #f9fafb;
+        border-color: #e5e7eb;
+        color: #111827;
+      }
+      .card {
+        border-color: #e5e7eb;
+      }
+    }
+  </style>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]']]
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Federated DDoS IDS - Formula Sheet</h1>
+    <p class="subtitle">Readable version for study and print (grouped by pipeline stage).</p>
+
+    <div class="toolbar">
+      <button class="btn" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+
+    <div class="legend">
+      <b>Quick Legend:</b> x = sample vector, mu = centroid, theta = threshold, lambda = anomaly buffer,
+      TP/TN/FP/FN = confusion matrix terms, y_hat = predicted class.
+    </div>
+
+    <section class="group">
+      <h2>A) Preprocessing</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>F1. Missing value imputation</h3>
+          <div class="eq">\[x_{ij}=\bar{x}_j\quad(\text{if }x_{ij}\text{ is NaN})\]</div>
+          <ul class="vars">
+            <li><b>x_ij</b>: value at sample i, feature j</li>
+            <li><b>mean_j</b>: mean of feature j</li>
+          </ul>
+          <p class="meta"><b>Use:</b> Replace missing numeric values before scaling.</p>
+          <p class="meta"><b>File:</b> client/preprocess.py</p>
+        </article>
+
+        <article class="card">
+          <h3>F2. Constant feature removal</h3>
+          <div class="eq">\[\mathrm{Var}(X_j)=0\Rightarrow \text{drop feature }j\]</div>
+          <ul class="vars">
+            <li><b>X_j</b>: all values of feature j</li>
+            <li><b>Var(. )</b>: variance</li>
+          </ul>
+          <p class="meta"><b>Use:</b> Remove non-informative columns.</p>
+          <p class="meta"><b>File:</b> client/preprocess.py</p>
+        </article>
+
+        <article class="card">
+          <h3>F3. Standardization (z-score)</h3>
+          <div class="eq">\[z_{ij}=\frac{x_{ij}-\mu_j}{\sigma_j}\]</div>
+          <ul class="vars">
+            <li><b>mu_j</b>: mean of feature j</li>
+            <li><b>sigma_j</b>: std deviation of feature j</li>
+            <li><b>z_ij</b>: scaled value used for clustering</li>
+          </ul>
+          <p class="meta"><b>Use:</b> Bring all features to comparable scale.</p>
+          <p class="meta"><b>File:</b> client/preprocess.py</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>B) Distance Metrics</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>F4. Euclidean distance</h3>
+          <div class="eq">\[D_e(x,\mu)=\sqrt{\sum_j(x_j-\mu_j)^2}\]</div>
+          <ul class="vars">
+            <li><b>x</b>: sample vector</li>
+            <li><b>mu</b>: centroid vector</li>
+            <li><b>j</b>: feature index</li>
+          </ul>
+          <p class="meta"><b>Use:</b> Straight-line distance in feature space.</p>
+          <p class="meta"><b>File:</b> client/clustering.py</p>
+        </article>
+
+        <article class="card">
+          <h3>F5. Manhattan distance</h3>
+          <div class="eq">\[D_m(x,\mu)=\sum_j\left|x_j-\mu_j\right|\]</div>
+          <ul class="vars">
+            <li><b>|.|</b>: absolute value</li>
+            <li><b>x_j, mu_j</b>: feature values at index j</li>
+          </ul>
+          <p class="meta"><b>Use:</b> L1 distance (cityblock metric).</p>
+          <p class="meta"><b>File:</b> client/clustering.py</p>
+        </article>
+
+        <article class="card">
+          <h3>F6. Minkowski distance</h3>
+          <div class="eq">\[D_p(x,\mu)=\left(\sum_j\left|x_j-\mu_j\right|^p\right)^{1/p}\]</div>
+          <ul class="vars">
+            <li><b>p</b>: Minkowski order (p >= 1)</li>
+            <li><b>p=2</b> gives Euclidean, <b>p=1</b> gives Manhattan</li>
+          </ul>
+          <p class="meta"><b>Use:</b> Flexible generalized distance metric.</p>
+          <p class="meta"><b>File:</b> client/clustering.py, config.py</p>
+        </article>
+
+        <article class="card">
+          <h3>F7. Cosine distance</h3>
+          <div class="eq">\[D_{\cos}(x,\mu)=1-\frac{x\cdot\mu}{\lVert x\rVert_2\lVert\mu\rVert_2}\]</div>
+          <ul class="vars">
+            <li><b>x dot mu</b>: dot product</li>
+            <li><b>||x||, ||mu||</b>: L2 norm (vector length)</li>
+          </ul>
+          <p class="meta"><b>Use:</b> Measures angle difference (direction similarity).</p>
+          <p class="meta"><b>File:</b> client/clustering.py</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>C) SCC Cluster Formation</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>F8. Nearest cluster selection</h3>
+          <div class="eq">\[k^*=\arg\min_k D(x,\mu_k),\quad d_{\min}=D(x,\mu_{k^*})\]</div>
+          <ul class="vars">
+            <li><b>k*</b>: nearest centroid index</li>
+            <li><b>d_min</b>: minimum distance for current sample</li>
+          </ul>
+          <p class="meta"><b>Use:</b> Decide candidate cluster for assignment.</p>
+          <p class="meta"><b>File:</b> client/clustering.py</p>
+        </article>
+
+        <article class="card">
+          <h3>F9. Cluster creation rule</h3>
+          <div class="eq">\[d_{\min}\le \theta\Rightarrow \text{assign};\ \text{else create new cluster}\]</div>
+          <ul class="vars">
+            <li><b>theta</b>: cluster threshold (predefined hyperparameter)</li>
+          </ul>
+          <p class="meta"><b>Use:</b> Controls number of clusters formed.</p>
+          <p class="meta"><b>File:</b> client/clustering.py, config.py, app.py</p>
+        </article>
+
+        <article class="card">
+          <h3>F10. Exact centroid update</h3>
+          <div class="eq">\[\mu_k^{\text{new}}=\frac{n_k\mu_k^{\text{old}}+x}{n_k+1}\]</div>
+          <ul class="vars">
+            <li><b>n_k</b>: current sample count in cluster k</li>
+            <li><b>mu_k_old, mu_k_new</b>: old/new centroid</li>
+          </ul>
+          <p class="meta"><b>Use:</b> Running mean update after assignment.</p>
+          <p class="meta"><b>File:</b> client/clustering.py</p>
+        </article>
+
+        <article class="card">
+          <h3>F11. Distance-space transform</h3>
+          <div class="eq">\[z_i=[D(x_i,\mu_1),D(x_i,\mu_2),\ldots,D(x_i,\mu_C)]\]</div>
+          <ul class="vars">
+            <li><b>z_i</b>: distance vector for sample i</li>
+            <li><b>C</b>: number of clusters</li>
+          </ul>
+          <p class="meta"><b>Use:</b> Returns sample distances to all centroids.</p>
+          <p class="meta"><b>File:</b> client/clustering.py</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>D) Thresholds and Detection</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>F12. Global anomaly threshold</h3>
+          <div class="eq">\[\theta_{\text{anomaly}}=\mu_D+\lambda\sigma_D\]</div>
+          <ul class="vars">
+            <li><b>D</b>: all minimum centroid distances from training samples</li>
+            <li><b>mu_D</b>: mean of D</li>
+            <li><b>sigma_D</b>: std of D</li>
+            <li><b>lambda</b>: anomaly buffer</li>
+          </ul>
+          <p class="meta"><b>Use:</b> Default detection threshold after training.</p>
+          <p class="meta"><b>File:</b> client/clustering.py, config.py</p>
+        </article>
+
+        <article class="card">
+          <h3>F13. Adaptive cluster threshold</h3>
+          <div class="eq">\[\theta_k=\mu_{D_k}+\lambda\sigma_{D_k}\]</div>
+          <ul class="vars">
+            <li><b>Dk</b>: distances of samples assigned to cluster k</li>
+            <li><b>mu_Dk, sigma_Dk</b>: mean/std for cluster k</li>
+          </ul>
+          <p class="meta"><b>Use:</b> Per-cluster dynamic detection threshold.</p>
+          <p class="meta"><b>File:</b> client/clustering.py</p>
+        </article>
+
+        <article class="card">
+          <h3>F14. Final prediction rule</h3>
+          <div class="eq">\[\hat{y}=\begin{cases}1,& d>\theta\\0,& d\le\theta\end{cases}\]</div>
+          <ul class="vars">
+            <li><b>d</b>: nearest-centroid distance for incoming sample</li>
+            <li><b>theta</b>: global or adaptive threshold</li>
+            <li><b>y_hat</b>: 1 = Attack, 0 = Normal</li>
+          </ul>
+          <p class="meta"><b>Use:</b> Convert distance score into class label.</p>
+          <p class="meta"><b>File:</b> client/clustering.py</p>
+        </article>
+      </div>
+    </section>
+</body>
+</html>
