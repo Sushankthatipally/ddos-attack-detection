@@ -1,0 +1,52 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.py[cod]
+*$py.class
+*.so
+tmp/
+.DS_Store
+streamlit_log.txt
+streamlit_log_new.txt
+
+# Virtual Environments
+tf_env/
+venv/
+env/
+ENV/
+
+# Dataset Files (CSV)
+*.csv
+01-12/
+03-11/
+
+# Model Files
+*.h5
+*.pkl
+*.pth
+*.onnx
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+
+# Logs
+*.log
+
+# Metrics (optional - uncomment if you don't want to track)
+# fl_metrics.json
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
