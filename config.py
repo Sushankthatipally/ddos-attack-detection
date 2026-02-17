@@ -21,5 +21,7 @@ FEATURE_NAMES = [
 # Model Hyperparameters
 CLUSTER_THRESHOLD = 0.3
 LEARNING_RATE = 0.1
-ANOMALY_BUFFER = 1.1  # 10% buffer for anomaly threshold
+ANOMALY_BUFFER = 1.1  # Lambda for statistical threshold (mean + lambda * std)
+MINKOWSKI_P = 3        # p parameter for Minkowski distance (p>=1)
+ADAPTIVE_THRESHOLD = False  # True = per-cluster thresholds (Option 3), False = global (Option 2)
 

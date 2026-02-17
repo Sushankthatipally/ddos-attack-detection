@@ -6,7 +6,7 @@ import sys
 # Add project root to path for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from config import FEATURE_NAMES, CLUSTER_THRESHOLD, LEARNING_RATE, ANOMALY_BUFFER, DISTANCE_METRIC
+from config import FEATURE_NAMES, CLUSTER_THRESHOLD, LEARNING_RATE, ANOMALY_BUFFER, DISTANCE_METRIC, MINKOWSKI_P, ADAPTIVE_THRESHOLD
 from client.preprocess import preprocess_data
 from client.clustering import SelfConstructingClustering
 from sklearn.metrics import accuracy_score, classification_report
@@ -47,7 +47,9 @@ def train_and_evaluate():
         threshold=CLUSTER_THRESHOLD,
         learning_rate=LEARNING_RATE,
         distance_metric=DISTANCE_METRIC,
-        anomaly_buffer=ANOMALY_BUFFER
+        anomaly_buffer=ANOMALY_BUFFER,
+        minkowski_p=MINKOWSKI_P,
+        adaptive_threshold=ADAPTIVE_THRESHOLD
     )
 
     # 4. Train
