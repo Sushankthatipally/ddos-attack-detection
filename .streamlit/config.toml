@@ -1,0 +1,19 @@
+[theme]
+# Obsidian Sentinel - Cybersecurity Dashboard Theme
+# Primary accent: Muted Teal
+primaryColor="#2DD4A8"
+
+# Deep charcoal background
+backgroundColor="#0F1419"
+
+# Sidebar / secondary surface
+secondaryBackgroundColor="#171C21"
+
+# Off-white text
+textColor="#DEE3EA"
+
+# Inter font
+font="sans serif"
+
+[server]
+headless = true
