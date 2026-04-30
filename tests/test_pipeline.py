@@ -2,8 +2,9 @@ import pandas as pd
 import numpy as np
 import pytest
 from client.preprocess import preprocess_data
-from client.clustering import SelfConstructingClustering
-from config import FEATURE_NAMES, CLUSTER_THRESHOLD
+from client.clustering import CLAPPClustering
+from config import CLAPP_THRESHOLD, FEATURE_NAMES, SIGMA_C
+from sklearn.neighbors import KNeighborsClassifier
 
 class TestPipeline:
     def test_preprocess_integration(self):
@@ -19,34 +20,37 @@ class TestPipeline:
             'Diff_Srv_Rate': [0.1, 0.1, 0.1],
             'SYN_Flag_Count': [0, 0, 0],
             'ACK_Flag_Count': [1, 1, 1],
-            'ip.src': ['1.1.1.1', '2.2.2.2', '3.3.3.3'], # Should be dropped
-            'id': [1, 2, 3] # Should be dropped
+            'Label': ['Normal', 'Attack', 'Normal'],
+            'label': [0, 1, 0],
+            'ip.src': ['1.1.1.1', '2.2.2.2', '3.3.3.3'], # Non-numeric values become 0
+            'id': [1, 2, 3]
         }
         df = pd.DataFrame(data)
         
-        X_scaled = preprocess_data(df)
+        PS, labels, feature_names = preprocess_data(df)
         
-        # Should drop 'ip.src' and 'id', keep 9 numeric columns
-        # However, `preprocess_data` removes constant columns.
-        # In this dummy data, 'Same_Srv_Rate' etc might be constant if all 0.9.
-        # Let's adjust data to avoid constant variance issues.
-        assert X_scaled.shape[0] == 3
-        # We expect at least some columns to remain.
-        assert X_scaled.shape[1] > 0
+        assert PS.shape[0] == 3
+        assert labels.tolist() == [0, 1, 0]
+        assert "Label" not in feature_names
+        assert "label" not in feature_names
+        assert PS.shape[1] == len(feature_names)
         
     def test_full_pipeline(self):
-        """Integration test: Load -> Preprocess -> Train -> Predict."""
+        """Integration test: Load -> Preprocess -> CLAPP reduce -> kNN classify."""
         # 1. Create Data
-        df = pd.DataFrame(np.random.rand(10, 9), columns=FEATURE_NAMES)
+        df = pd.DataFrame(np.random.rand(10, len(FEATURE_NAMES)), columns=FEATURE_NAMES)
+        df["label"] = [0, 1] * 5
         
         # 2. Preprocess
-        X_train = preprocess_data(df)
+        PS, labels, _ = preprocess_data(df)
         
-        # 3. Model
-        model = SelfConstructingClustering(threshold=CLUSTER_THRESHOLD)
-        model.fit(X_train)
+        # 3. CLAPP feature reduction
+        model = CLAPPClustering(threshold=CLAPP_THRESHOLD, sigma=SIGMA_C)
+        X_reduced = model.fit_transform(PS, labels)
         
-        # 4. Predict
-        preds = model.predict(X_train)
+        # 4. kNN classification on reduced matrix
+        knn = KNeighborsClassifier(n_neighbors=1)
+        knn.fit(X_reduced, labels)
+        preds = knn.predict(X_reduced)
         assert len(preds) == 10
         assert set(preds).issubset({0, 1})

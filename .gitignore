@@ -16,7 +16,7 @@ venv/
 env/
 ENV/
 *.md
-
+*.txt
 # Dataset Files (CSV)
 *.csv
 01-12/

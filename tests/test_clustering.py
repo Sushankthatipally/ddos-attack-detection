@@ -1,59 +1,50 @@
 import pytest
 import numpy as np
-from client.clustering import SelfConstructingClustering
+from client.clustering import CLAPPClustering
 
-class TestSelfConstructingClustering:
+class TestCLAPPClustering:
     def test_initialization(self):
         """Test default parameters and initialization."""
-        model = SelfConstructingClustering()
-        assert model.threshold == 0.5
-        assert model.learning_rate == 0.1
-        assert model.distance_metric == 'euclidean'
-        assert model.centroids_ == []
+        model = CLAPPClustering()
+        assert model.threshold == 0.85
+        assert model.sigma == 0.5
+        assert model.clusters_ == []
+        assert model.transformation_matrix_ is None
 
-    def test_fit_simple_data(self):
-        """Test fitting on simple synthetic data."""
-        X = np.array([[1, 1], [1.1, 1.1], [10, 10], [10.1, 10.1]])
-        model = SelfConstructingClustering(threshold=0.5)
-        model.fit(X)
+    def test_compute_pattern_vectors(self):
+        """Test posterior probability vectors from the PS matrix."""
+        PS = np.array([
+            [10, 0],
+            [10, 0],
+            [0, 5],
+            [0, 5],
+        ])
+        labels = np.array([0, 0, 1, 1])
+        model = CLAPPClustering()
+        patterns = model.compute_pattern_vectors(PS, labels)
         
-        # Expect 2 clusters: around (1,1) and (10,10)
-        assert len(model.centroids_) == 2
+        np.testing.assert_allclose(patterns[0], [1.0, 0.0])
+        np.testing.assert_allclose(patterns[1], [0.0, 1.0])
         
-        # Centroids should be close to the cluster centers
-        c1 = model.centroids_[0]
-        c2 = model.centroids_[1]
-        
-        # Check if one is near (1,1) and other near (10,10)
-        # Order depends on input order
-        assert (np.linalg.norm(c1 - [1, 1]) < 0.5) or (np.linalg.norm(c1 - [10, 10]) < 0.5)
-        assert (np.linalg.norm(c2 - [1, 1]) < 0.5) or (np.linalg.norm(c2 - [10, 10]) < 0.5)
+    def test_fit_and_transform(self):
+        """Test fitting CLAPP and reducing the PS matrix."""
+        PS = np.array([
+            [10, 9, 0, 0],
+            [8, 7, 0, 0],
+            [0, 0, 5, 6],
+            [0, 0, 7, 8],
+        ])
+        labels = np.array([0, 0, 1, 1])
+        model = CLAPPClustering(threshold=0.85, sigma=0.5)
+        model.fit(PS, labels)
 
-    def test_predict(self):
-        """Test prediction logic (anomaly detection)."""
-        X_train = np.array([[1, 1], [1.1, 1.1], [1, 1.2]])
-        model = SelfConstructingClustering(threshold=0.5, anomaly_buffer=1.5)
-        model.fit(X_train)
-        
-        # Normal sample (close to cluster)
-        normal = np.array([[1.05, 1.05]])
-        pred = model.predict(normal)
-        assert pred[0] == 0 # Normal
-        
-        # Anomaly sample (far away)
-        anomaly = np.array([[100, 100]])
-        pred_anomaly = model.predict(anomaly)
-        assert pred_anomaly[0] == 1 # Attack
+        assert len(model.clusters_) == 2
+        assert model.transformation_matrix_.shape == (4, 2)
 
-    def test_cosine_metric(self):
-        """Test with cosine distance metric."""
-        # Cosine distance = 1 - cos_sim
-        # Vectors [1, 0] and [0, 1] are orthogonal -> dist = 1.0
-        # Vectors [1, 0] and [1, 0] are identical -> dist = 0.0
-        X = np.array([[1, 0], [0, 1], [1, 0.1]]) # 3rd point close to 1st in angle
-        
-        model = SelfConstructingClustering(threshold=0.1, distance_metric='cosine')
-        model.fit(X)
-        
-        # Should form 2 clusters: {[1,0], [1,0.1]} and {[0,1]}
-        assert len(model.centroids_) == 2
+        reduced = model.transform(PS)
+        assert reduced.shape == (4, 2)
+
+    def test_membership_same_vector_is_one(self):
+        """Identical pattern vectors should have full membership."""
+        model = CLAPPClustering()
+        assert model.membership([0.8, 0.2], [0.8, 0.2]) == pytest.approx(1.0)
